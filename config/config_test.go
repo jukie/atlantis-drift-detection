@@ -6,74 +6,79 @@ import (
 
 	"github.com/jukie/atlantis-drift-detection/config"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
-func setEnv(t *testing.T, key, value string) {
-	t.Helper()
-	require.NoError(t, os.Setenv(key, value))
-}
-
-func unsetEnv(t *testing.T, key string) {
-	t.Helper()
-	require.NoError(t, os.Unsetenv(key))
-}
-
 func TestGetDriftCfg(t *testing.T) {
-	setEnv(t, "ATLANTIS_URL", "https://example.com")
-	setEnv(t, "ATLANTIS_TOKEN", "example_token")
-	setEnv(t, "CONFIG_PATH", "example_config_path")
-	defer unsetEnv(t, "ATLANTIS_URL")
-	defer unsetEnv(t, "ATLANTIS_TOKEN")
-	defer unsetEnv(t, "CONFIG_PATH")
+	os.Setenv("ATLANTIS_URL", "http://example.com")
+	os.Setenv("ATLANTIS_TOKEN", "token")
+	os.Setenv("CONFIG_PATH", "/path/to/config.yaml")
+	defer os.Clearenv()
+
+	expectedCfg := config.DriftCfg{
+		AtlantisUrl:   "http://example.com",
+		AtlantisToken: "token",
+		ConfigPath:    "/path/to/config.yaml",
+	}
 
 	cfg, err := config.GetDriftCfg()
-	require.NoError(t, err)
+	assert.NoError(t, err)
+	assert.Equal(t, expectedCfg, cfg)
+}
 
-	assert.Equal(t, "https://example.com", cfg.AtlantisUrl)
-	assert.Equal(t, "example_token", cfg.AtlantisToken)
-	assert.Equal(t, "example_config_path", cfg.ConfigPath)
+func TestGetDriftCfgMissingEnvVar(t *testing.T) {
+	os.Unsetenv("ATLANTIS_URL")
+	os.Unsetenv("ATLANTIS_TOKEN")
+	os.Unsetenv("CONFIG_PATH")
+	defer os.Clearenv()
+
+	_, err := config.GetDriftCfg()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "ATLANTIS_URL environment variable is required but not set")
 }
 
 func TestLoadVcsConfig(t *testing.T) {
-	cfgContent := `
-github:
+	cfgYAML := `github:
   apiEndpoint: https://api.github.com
-  token: github_token
   repos:
-    - ref: main
-      name: jukie/repo1
-    - ref: master
-      name: jukie/repo2
+  - ref: master
+    name: repo1
 gitlab:
   apiEndpoint: https://gitlab.com/api/v4
-  token: gitlab_token
   repos:
-    - ref: main
-      name: jukie/repo3
+  - ref: main
+    name: repo2
 `
-	cfgFile, err := os.CreateTemp("", "config-*.yaml")
-	require.NoError(t, err)
-	defer os.Remove(cfgFile.Name())
+	tmpfile, err := os.CreateTemp("", "config")
+	assert.NoError(t, err)
+	defer os.Remove(tmpfile.Name())
 
-	_, err = cfgFile.WriteString(cfgContent)
-	require.NoError(t, err)
+	err = os.WriteFile(tmpfile.Name(), []byte(cfgYAML), 0644)
+	assert.NoError(t, err)
 
-	cfg, err := config.LoadVcsConfig(cfgFile.Name())
-	require.NoError(t, err)
+	expectedCfg := config.VcsServers{
+		GithubServer: config.ServerCfg{
+			ApiEndpoint: "https://api.github.com",
+			Repos: []config.Repo{
+				{Ref: "master", Name: "repo1"},
+			},
+		},
+		GitlabServer: config.ServerCfg{
+			ApiEndpoint: "https://gitlab.com/api/v4",
+			Repos: []config.Repo{
+				{Ref: "main", Name: "repo2"},
+			},
+		},
+	}
 
-	assert.Equal(t, "https://api.github.com", cfg.GithubServers.ApiEndpoint)
-	assert.Equal(t, "github_token", cfg.GithubServers.Token)
-	assert.Equal(t, "https://gitlab.com/api/v4", cfg.GitlabServers.ApiEndpoint)
-	assert.Equal(t, "gitlab_token", cfg.GitlabServers.Token)
+	cfg, err := config.LoadVcsConfig(tmpfile.Name())
+	assert.NoError(t, err)
+	assert.Equal(t, expectedCfg, cfg)
+}
 
-	assert.Len(t, cfg.GithubServers.Repos, 2)
-	assert.Len(t, cfg.GitlabServers.Repos, 1)
+func TestLoadVcsConfigMissingFile(t *testing.T) {
+	cfgPath := "/path/to/nonexistent.yaml"
 
-	assert.Equal(t, "jukie/repo1", cfg.GithubServers.Repos[0].Name)
-	assert.Equal(t, "main", cfg.GithubServers.Repos[0].Ref)
-	assert.Equal(t, "jukie/repo2", cfg.GithubServers.Repos[1].Name)
-	assert.Equal(t, "master", cfg.GithubServers.Repos[1].Ref)
-	assert.Equal(t, "jukie/repo3", cfg.GitlabServers.Repos[0].Name)
-	assert.Equal(t, "main", cfg.GitlabServers.Repos[0].Ref)
+	_, err := config.LoadVcsConfig(cfgPath)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "could not find config file")
 }

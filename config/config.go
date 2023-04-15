@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/jukie/atlantis-drift-detection/pkg/vcs"
 	"gopkg.in/yaml.v3"
 )
 
@@ -19,15 +18,13 @@ type Repo struct {
 }
 
 type ServerCfg struct {
-	ApiEndpoint string            `yaml:"apiEndpoint"`
-	Client      *vcs.GitlabClient `yaml:"-"`
-	Token       string            `yaml:"token"`
-	Repos       []Repo            `yaml:"repos"`
+	ApiEndpoint string `yaml:"apiEndpoint"`
+	Repos       []Repo `yaml:"repos"`
 }
 
 type VcsServers struct {
-	GithubServers ServerCfg `yaml:"github"`
-	GitlabServers ServerCfg `yaml:"gitlab"`
+	GithubServer ServerCfg `yaml:"github"`
+	GitlabServer ServerCfg `yaml:"gitlab"`
 }
 
 func GetDriftCfg() (DriftCfg, error) {
