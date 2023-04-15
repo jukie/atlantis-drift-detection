@@ -1,4 +1,4 @@
-name: mutator-image
+name: drifter-image
 
 on:
   push:
@@ -10,7 +10,7 @@ on:
   pull_request:
     paths:
       - 'Dockerfile'
-      - '.github/workflows/mutator-image.yml'
+      - '.github/workflows/drifter-image.yml'
   workflow_dispatch:
 
 concurrency:
