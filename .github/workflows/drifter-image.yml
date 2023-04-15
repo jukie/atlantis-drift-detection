@@ -1,0 +1,97 @@
+name: mutator-image
+
+on:
+  push:
+    branches:
+      - 'main'
+    tags:
+      - v*.*.* # stable release like, v0.19.2
+      - v*.*.*-pre.* # pre release like, v0.19.0-pre.calendardate
+  pull_request:
+    paths:
+      - 'Dockerfile'
+      - '.github/workflows/mutator-image.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    env:
+      # Set docker repo to either the fork or the main repo where the branch exists
+      DOCKER_REPO: ghcr.io/${{ github.repository }}
+      # Push if not a pull request or this is a fork
+      PUSH: ${{ github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork }}
+
+    steps:
+    - uses: actions/checkout@v3
+
+    # Lint the Dockerfile first before setting anything up
+    - name: Lint Dockerfile
+      uses: hadolint/hadolint-action@master
+      with:
+        dockerfile: "Dockerfile"
+
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v2
+      with:
+        image: tonistiigi/binfmt:latest
+        platforms: arm64,arm
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+
+    - name: Docker meta
+      id: meta
+      uses: docker/metadata-action@v4
+      with:
+        images: |
+          ${{ env.DOCKER_REPO }}
+        labels: |
+          org.opencontainers.image.authors="@jukie"
+          org.opencontainers.image.licenses=Apache-2.0
+        tags: |
+          # semver
+          type=semver,pattern={{version}},prefix=v,suffix=${{ env.SUFFIX }}
+          type=semver,pattern={{major}}.{{minor}},prefix=v,suffix=${{ env.SUFFIX }}
+          # dev
+          type=raw,value=dev,suffix=${{ env.SUFFIX }}-{{ sha }}
+          type=raw,event=push,value=dev,enable={{is_default_branch}},suffix=${{ env.SUFFIX }}
+          # prerelease
+          type=raw,event=tag,value=prerelease-latest,enable=${{ startsWith(github.ref, 'refs/tags/') && contains(github.ref, 'pre') }},suffix=${{ env.SUFFIX }}
+          # latest
+          type=raw,event=tag,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/') && !contains(github.ref, 'pre') }},suffix=${{ env.SUFFIX }}
+          # pr
+          type=ref,event=pr,suffix=${{ env.SUFFIX }}
+        flavor: |
+          # This is disabled here so we can use the raw form above
+          latest=false
+          # Suffix is not used here since there's no way to disable it above
+
+    - name: Login to Packages Container registry
+      uses: docker/login-action@v2
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    # Publish release to container registry
+    - name: Populate release version
+      if: contains(fromJson('["push", "pull_request"]'), github.event_name)
+      run: echo "RELEASE_VERSION=${{ startsWith(github.ref, 'refs/tags/') && '${GITHUB_REF#refs/*/}' || 'dev' }}" >> $GITHUB_ENV
+
+    - name: "Build ${{ env.PUSH == 'true' && 'and push' || '' }} ${{ env.DOCKER_REPO }} image"
+      if: contains(fromJson('["push", "pull_request"]'), github.event_name)
+      uses: docker/build-push-action@v4
+      with:
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        context: .
+        platforms: linux/arm64/v8,linux/amd64
+        push: ${{ env.PUSH }}
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        outputs: type=image,name=target,annotation-index.org.opencontainers.image.description=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.description'] }}
