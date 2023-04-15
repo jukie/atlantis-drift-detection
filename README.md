@@ -56,5 +56,5 @@ export CONFIG_PATH=/path/to/your/config.yaml
 
 4. Run the program:
 ```
-./atlantis-drift-detection
+./atlantis-drift-detection --github-token $SOME_TOKEN --gitlab-token $SOME_TOKEN
 ```
