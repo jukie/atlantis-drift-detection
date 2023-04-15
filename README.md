@@ -10,6 +10,10 @@ Atlantis Drift Detection requires the following environment variables to be set:
 - `ATLANTIS_TOKEN`: The API token used to authenticate with your Atlantis instance.
 - `CONFIG_PATH`: The path to your VCS configuration file (in YAML format).
 
+An API token for your Git server is also required:
+-  `--gitlab-token` or `GITLAB_TOKEN`
+-  `--github-token` or `GITHUB_TOKEN`
+
 ### VCS Configuration File
 
 The VCS configuration file should have the following format:
