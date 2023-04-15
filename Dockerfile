@@ -16,7 +16,7 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} GO111MODULE=on go build 
 
 FROM --platform=$BUILDPLATFORM gcr.io/distroless/static:nonroot
 WORKDIR /
-COPY --from=builder /app/mutator .
+COPY --from=builder /app/drifter .
 USER nonroot:nonroot
 
 ENTRYPOINT ["/drifter"]
