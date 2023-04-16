@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"net/http/httputil"
 	"regexp"
@@ -14,6 +13,8 @@ import (
 	"github.com/jukie/atlantis-drift-detection/pkg/vcs"
 	"gopkg.in/yaml.v3"
 )
+
+const atlantisCfgFile = "atlantis.yaml"
 
 type Path struct {
 	Directory string `yaml:"dir"`
@@ -50,12 +51,12 @@ func BuildPlanReq(client vcs.RepositoryClient, repo, ref, vcsType string) ([]byt
 			Directory: ".",
 		}},
 	}
-	hasRepoCfg, atlantisYaml, _ := client.GetFileContent(repo, "", ref)
+	hasRepoCfg, atlantisCfgBytes, _ := client.GetFileContent(repo, atlantisCfgFile, ref)
 	if hasRepoCfg {
 		var projects struct {
 			Paths []Path `yaml:"projects"`
 		}
-		_ = yaml.Unmarshal(atlantisYaml, &projects)
+		_ = yaml.Unmarshal(atlantisCfgBytes, &projects)
 		planInput.Paths = projects.Paths
 	}
 
@@ -67,7 +68,10 @@ func BuildPlanReq(client vcs.RepositoryClient, repo, ref, vcsType string) ([]byt
 }
 
 func Run(client vcs.RepositoryClient, repo config.Repo, driftCfg config.DriftCfg) error {
-	resp := ApiPlan(client, repo, driftCfg.AtlantisUrl, driftCfg.AtlantisToken)
+	resp, err := ApiPlan(client, repo, driftCfg.AtlantisUrl, driftCfg.AtlantisToken)
+	if err != nil {
+		return err
+	}
 	driftedProjects, err := DriftChecker(resp)
 	if err != nil {
 		return err
@@ -79,22 +83,20 @@ func Run(client vcs.RepositoryClient, repo config.Repo, driftCfg config.DriftCfg
 	return nil
 }
 
-func ApiPlan(client vcs.RepositoryClient, r config.Repo, atlantisHost, atlantisToken string) PlanApiResponse {
+func ApiPlan(client vcs.RepositoryClient, r config.Repo, atlantisHost, atlantisToken string) (PlanApiResponse, error) {
 	planReq, err := BuildPlanReq(client, r.Name, r.Ref, client.VcsType())
 	if err != nil {
-		log.Fatalln(err)
+		return PlanApiResponse{}, err
 	}
-	planResp, err := httpPost(atlantisHost+"/api/plan", atlantisToken, planReq)
-	if err != nil {
-		fmt.Printf("issue during drift execution for %v", planReq)
-	}
-	return planResp
+	return httpPost(atlantisHost+"/api/plan", atlantisToken, planReq)
 }
 
 func httpPost(url, token string, reqBody []byte) (PlanApiResponse, error) {
+	var planResp PlanApiResponse
+
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(reqBody))
 	if err != nil {
-		log.Fatal(err)
+		return planResp, err
 	}
 	req.Header.Set("X-Atlantis-Token", token)
 	req.Header.Set("Content-Type", "application/json")
@@ -102,24 +104,22 @@ func httpPost(url, token string, reqBody []byte) (PlanApiResponse, error) {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		panic(err)
+		return planResp, err
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		fmt.Println(resp.Header.Get("Content-Type"))
 		dump, err := httputil.DumpResponse(resp, true)
 		if err != nil {
-			panic(err)
+			return planResp, fmt.Errorf("issue during http request to Atlantis server:\nRequest body: %v\nAdditional error: %q", string(reqBody), err)
 		}
-		panic(string(dump))
+		return planResp, fmt.Errorf("issue during http request to Atlantis server\nRequest body: %v\nResponse dump: %v", string(reqBody), string(dump))
 	}
 
 	defer resp.Body.Close()
-	var planResp PlanApiResponse
 	err = json.NewDecoder(resp.Body).Decode(&planResp)
 
 	if err != nil {
-		return planResp, fmt.Errorf("issue parsing response: %v", err)
+		return planResp, fmt.Errorf("issue parsing response from Atlantis: %v", err)
 	}
 	return planResp, nil
 }
@@ -148,7 +148,7 @@ func DriftChecker(res PlanApiResponse) ([]string, error) {
 
 func DriftHandler(client vcs.RepositoryClient, driftedProjects []string, repo config.Repo) error {
 	if len(driftedProjects) < 1 {
-		fmt.Println("No drifted projects found, party on. (っ▀¯▀)つ")
+		fmt.Println("No drifted projects found, party on. ༼つ▀̿_▀̿ ༽つ")
 		return nil
 	}
 
