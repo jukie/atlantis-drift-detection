@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/jukie/atlantis-drift-detection/config"
+	"github.com/jukie/atlantis-drift-detection/internal/config"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -55,14 +55,14 @@ gitlab:
 	err = os.WriteFile(tmpfile.Name(), []byte(cfgYAML), 0644)
 	assert.NoError(t, err)
 
-	expectedCfg := config.VcsServers{
-		GithubServer: config.ServerCfg{
+	expectedCfg := &config.VcsServers{
+		GithubServer: &config.ServerCfg{
 			ApiEndpoint: "https://api.github.com",
 			Repos: []config.Repo{
 				{Ref: "master", Name: "repo1"},
 			},
 		},
-		GitlabServer: config.ServerCfg{
+		GitlabServer: &config.ServerCfg{
 			ApiEndpoint: "https://gitlab.com/api/v4",
 			Repos: []config.Repo{
 				{Ref: "main", Name: "repo2"},

@@ -6,8 +6,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/jukie/atlantis-drift-detection/config"
-	"github.com/jukie/atlantis-drift-detection/pkg/drift"
+	"github.com/jukie/atlantis-drift-detection/internal/config"
+	"github.com/jukie/atlantis-drift-detection/internal/drift"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -127,7 +127,8 @@ func TestApiPlan(t *testing.T) {
 
 	atlantisHost = testServer.URL
 
-	planResp := drift.ApiPlan(mockClient, repo, atlantisHost, atlantisToken)
+	planResp, err := drift.ApiPlan(mockClient, repo, atlantisHost, atlantisToken)
+	assert.NoError(t, err)
 	assert.Equal(t, 1, len(planResp.ProjectResults))
 	assert.Equal(t, "No changes. Your infrastructure matches the configuration", planResp.ProjectResults[0].PlanSuccess.TerraformOutput)
 	assert.Equal(t, "project1", planResp.ProjectResults[0].ProjectName)

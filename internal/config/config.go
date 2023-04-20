@@ -23,8 +23,8 @@ type ServerCfg struct {
 }
 
 type VcsServers struct {
-	GithubServer ServerCfg `yaml:"github"`
-	GitlabServer ServerCfg `yaml:"gitlab"`
+	GithubServer *ServerCfg `yaml:"github"`
+	GitlabServer *ServerCfg `yaml:"gitlab"`
 }
 
 func GetDriftCfg() (DriftCfg, error) {
@@ -51,20 +51,20 @@ func GetDriftCfg() (DriftCfg, error) {
 	return d, nil
 }
 
-func LoadVcsConfig(repoCfgPath string) (VcsServers, error) {
+func LoadVcsConfig(repoCfgPath string) (*VcsServers, error) {
 	var cfg VcsServers
 	if fileExists(repoCfgPath) {
 		f, err := os.ReadFile(repoCfgPath)
 		if err != nil {
-			return cfg, err
+			return &cfg, err
 		}
 		err = yaml.Unmarshal(f, &cfg)
 		if err != nil {
-			return cfg, err
+			return &cfg, err
 		}
-		return cfg, nil
+		return &cfg, nil
 	}
-	return cfg, fmt.Errorf("could not find config file")
+	return &cfg, fmt.Errorf("could not find config file")
 }
 
 func fileExists(filename string) bool {

@@ -9,8 +9,8 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/jukie/atlantis-drift-detection/config"
-	"github.com/jukie/atlantis-drift-detection/pkg/vcs"
+	"github.com/jukie/atlantis-drift-detection/internal/config"
+	"github.com/jukie/atlantis-drift-detection/internal/vcs"
 	"gopkg.in/yaml.v3"
 )
 
