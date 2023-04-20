@@ -11,32 +11,32 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// MockRepositoryClient is a mock implementation of vcs.RepositoryClient.
-type MockRepositoryClient struct {
+// MockClient is a mock implementation of vcs.Client.
+type MockClient struct {
 }
 
-func (m *MockRepositoryClient) GetFileContent(repo, path, ref string) (bool, []byte, error) {
+func (m *MockClient) GetFileContent(repo, path, ref string) (bool, []byte, error) {
 	// Mock the behavior of GetFileContent here.
 	return true, []byte{}, nil
 }
 
-func (m *MockRepositoryClient) VcsType() string {
+func (m *MockClient) VcsType() string {
 	// Mock the behavior of VcsType here.
 	return "github"
 }
 
-func (m *MockRepositoryClient) CreatePull(repo, ref string) (int, string, error) {
+func (m *MockClient) CreatePull(repo, ref string) (int, string, error) {
 	// Mock the behavior of CreatePull here.
 	return 1, "https://example.com/pull/1", nil
 }
 
-func (m *MockRepositoryClient) CommentOnPull(repo string, pullID int, driftedProjects []string) error {
+func (m *MockClient) CommentOnPull(repo string, pullID int, driftedProjects []string) error {
 	// Mock the behavior of CommentOnPull here.
 	return nil
 }
 
 func TestBuildPlanReq(t *testing.T) {
-	mockClient := &MockRepositoryClient{}
+	mockClient := &MockClient{}
 	repo := "test-repo"
 	ref := "test-ref"
 	vcsType := "github"
@@ -82,7 +82,7 @@ func TestDriftChecker(t *testing.T) {
 }
 
 func TestRun(t *testing.T) {
-	mockClient := &MockRepositoryClient{}
+	mockClient := &MockClient{}
 	repo := config.Repo{
 		Name: "test-repo",
 		Ref:  "test-ref",
@@ -108,7 +108,7 @@ func TestRun(t *testing.T) {
 }
 
 func TestApiPlan(t *testing.T) {
-	mockClient := &MockRepositoryClient{}
+	mockClient := &MockClient{}
 	repo := config.Repo{
 		Name: "test-repo",
 		Ref:  "test-ref",
@@ -135,7 +135,7 @@ func TestApiPlan(t *testing.T) {
 }
 
 func TestDriftHandler(t *testing.T) {
-	mockClient := &MockRepositoryClient{}
+	mockClient := &MockClient{}
 	driftedProjects := []string{"project1"}
 	repo := config.Repo{
 		Name: "test-repo",

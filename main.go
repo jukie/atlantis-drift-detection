@@ -28,8 +28,7 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-
-	processRepositories(servers, githubToken, gitlabToken, driftCfg)
+	executeDriftCheck(servers, githubToken, gitlabToken, driftCfg)
 }
 
 func validateTokens(gitlabToken, githubToken string) {
@@ -38,35 +37,26 @@ func validateTokens(gitlabToken, githubToken string) {
 	}
 }
 
-func processRepositories(servers *config.VcsServers, githubToken, gitlabToken string, driftCfg config.DriftCfg) {
+func executeDriftCheck(servers *config.VcsServers, githubToken, gitlabToken string, driftCfg config.DriftCfg) {
 	if servers.GithubServer != nil {
-		processGithubRepositories(servers.GithubServer, githubToken, driftCfg)
+		ghClient, err := vcs.NewGithubClient(servers.GithubServer.ApiEndpoint, githubToken)
+		if err != nil {
+			log.Fatalln("failed to setup github client")
+		}
+		driftRunner(ghClient, servers.GithubServer.Repos, driftCfg)
 	}
 	if servers.GitlabServer != nil {
-		processGitlabRepositories(servers.GitlabServer, gitlabToken, driftCfg)
-	}
-}
-
-func processGithubRepositories(ghServer *config.ServerCfg, githubToken string, driftCfg config.DriftCfg) {
-	ghClient, err := vcs.NewGithubClient(ghServer.ApiEndpoint, githubToken)
-	if err != nil {
-		log.Fatalln("failed to setup github client")
-	}
-	for _, r := range ghServer.Repos {
-		err := drift.Run(ghClient, r, driftCfg)
+		glClient, err := vcs.NewGitlabClient(servers.GitlabServer.ApiEndpoint, gitlabToken)
 		if err != nil {
-			log.Fatalln(err)
+			log.Fatalln("failed to setup gitlab client")
 		}
+		driftRunner(glClient, servers.GitlabServer.Repos, driftCfg)
 	}
 }
 
-func processGitlabRepositories(glServer *config.ServerCfg, gitlabToken string, driftCfg config.DriftCfg) {
-	glClient, err := vcs.NewGitlabClient(glServer.ApiEndpoint, gitlabToken)
-	if err != nil {
-		log.Fatalln("failed to setup gitlab client")
-	}
-	for _, r := range glServer.Repos {
-		err := drift.Run(glClient, r, driftCfg)
+func driftRunner(client vcs.Client, repos []config.Repo, driftCfg config.DriftCfg) {
+	for _, r := range repos {
+		err := drift.Run(client, r, driftCfg)
 		if err != nil {
 			log.Fatalln(err)
 		}

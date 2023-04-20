@@ -42,7 +42,7 @@ type PlanApiRequest struct {
 	Paths      []Path
 }
 
-func BuildPlanReq(client vcs.RepositoryClient, repo, ref, vcsType string) ([]byte, error) {
+func BuildPlanReq(client vcs.Client, repo, ref, vcsType string) ([]byte, error) {
 	planInput := PlanApiRequest{
 		Repository: repo,
 		Ref:        ref,
@@ -67,7 +67,7 @@ func BuildPlanReq(client vcs.RepositoryClient, repo, ref, vcsType string) ([]byt
 	return json_data, nil
 }
 
-func Run(client vcs.RepositoryClient, repo config.Repo, driftCfg config.DriftCfg) error {
+func Run(client vcs.Client, repo config.Repo, driftCfg config.DriftCfg) error {
 	resp, err := ApiPlan(client, repo, driftCfg.AtlantisUrl, driftCfg.AtlantisToken)
 	if err != nil {
 		return err
@@ -83,7 +83,7 @@ func Run(client vcs.RepositoryClient, repo config.Repo, driftCfg config.DriftCfg
 	return nil
 }
 
-func ApiPlan(client vcs.RepositoryClient, r config.Repo, atlantisHost, atlantisToken string) (PlanApiResponse, error) {
+func ApiPlan(client vcs.Client, r config.Repo, atlantisHost, atlantisToken string) (PlanApiResponse, error) {
 	planReq, err := BuildPlanReq(client, r.Name, r.Ref, client.VcsType())
 	if err != nil {
 		return PlanApiResponse{}, err
@@ -146,7 +146,7 @@ func DriftChecker(res PlanApiResponse) ([]string, error) {
 	return driftedProjects, err
 }
 
-func DriftHandler(client vcs.RepositoryClient, driftedProjects []string, repo config.Repo) error {
+func DriftHandler(client vcs.Client, driftedProjects []string, repo config.Repo) error {
 	if len(driftedProjects) < 1 {
 		fmt.Println("No drifted projects found, party on. ༼つ▀̿_▀̿ ༽つ")
 		return nil
