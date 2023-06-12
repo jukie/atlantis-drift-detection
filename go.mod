@@ -5,7 +5,7 @@ go 1.20
 require (
 	github.com/google/go-github/v51 v51.0.0
 	github.com/stretchr/testify v1.8.2
-	github.com/xanzy/go-gitlab v0.83.0
+	github.com/xanzy/go-gitlab v0.85.0
 	golang.org/x/oauth2 v0.7.0
 	gopkg.in/yaml.v3 v3.0.1
 )
