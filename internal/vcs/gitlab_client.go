@@ -40,7 +40,7 @@ func (c *GitlabClient) CreatePull(repo, sourceBranch string) (int, string, error
 	// TODO
 	// mrReviewers := c.reviewerIDs()
 
-	head, _, err := c.Client.Commits.GetCommit(repo, sourceBranch)
+	head, _, err := c.Client.Commits.GetCommit(repo, sourceBranch, nil)
 	if err != nil {
 		return 0, "", err
 	}
