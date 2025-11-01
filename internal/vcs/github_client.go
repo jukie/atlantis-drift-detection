@@ -117,7 +117,7 @@ func (g *GithubClient) CommitFileChange(repoPath, sourceBranch, targetBranch str
 }
 
 func (g *GithubClient) VcsType() string {
-	return "GitHub"
+	return "Github"
 }
 
 func (g *GithubClient) CommentOnPull(repoPath string, pull int, driftedProjects []string) error {
